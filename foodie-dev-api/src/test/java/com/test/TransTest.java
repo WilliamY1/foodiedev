@@ -15,18 +15,18 @@ import org.springframework.test.context.junit4.SpringRunner;
  * @author WuJunyi
  * @create 2019-11-14 17:13
  **/
-@RunWith(SpringRunner.class)
-@SpringBootTest(classes = Application.class)
+//@RunWith(SpringRunner.class)
+//@SpringBootTest(classes = Application.class)
 public class TransTest {
 
-    @Autowired
-    private StuService stuService;
-    @Autowired
-    private TestTransService testTransService;
-
-    @Test
-    public void myTest(){
-        //stuService.testPropagationTrans();
-        testTransService.testPropagationTrans();
-    }
+    //@Autowired
+    //private StuService stuService;
+    //@Autowired
+    //private TestTransService testTransService;
+    //
+    //@Test
+    //public void myTest(){
+    //    //stuService.testPropagationTrans();
+    //    testTransService.testPropagationTrans();
+    //}
 }
