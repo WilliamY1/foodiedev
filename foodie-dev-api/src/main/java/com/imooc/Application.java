@@ -2,6 +2,7 @@ package com.imooc;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import tk.mybatis.spring.annotation.MapperScan;
 
@@ -12,9 +13,11 @@ import tk.mybatis.spring.annotation.MapperScan;
  * @create 2019-11-14 9:51
  **/
 @SpringBootApplication
-@EnableTransactionManagement
+//@EnableTransactionManagement
 // 扫描mybatis通用Mapper所在的包
 @MapperScan(basePackages = "com.imooc.mapper")
+// 扫描所有包以及相关组件包
+@ComponentScan(basePackages = {"com.imooc","org.n3r.idworker"})
 public class Application {
 
     public static void main(String[] args) {
