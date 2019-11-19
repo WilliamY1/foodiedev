@@ -97,5 +97,57 @@ public class ItemsController extends BaseController {
         return IMOOCJSONResult.ok(grid);
     }
 
+    @ApiOperation(value = "搜索商品列表", notes = "搜索商品列表", httpMethod = "GET")
+    @GetMapping("/search")
+    public IMOOCJSONResult search(
+            @ApiParam(name = "keywords", value = "关键字", required = true)
+            @RequestParam String keywords,
+            @ApiParam(name = "sort", value = "排序", required = false)
+            @RequestParam String sort,
+            @ApiParam(name = "page", value = "查询下一页的第几页", required = false)
+            @RequestParam Integer page,
+            @ApiParam(name = "pageSize", value = "分页的每一页显示的记录数", required = false)
+            @RequestParam Integer pageSize) {
+        // 判空校验
+        if (StringUtils.isBlank(keywords)) {
+            return IMOOCJSONResult.errorMsg(null);
+        }
+        if(null == page){
+            page = 1;
+        }
+        if(null == pageSize){
+            pageSize = PAGE_SIZE;
+        }
+        PagedGridResult grid = itemService.searchItems(keywords,sort,page,pageSize);
+
+        return IMOOCJSONResult.ok(grid);
+    }
+
+    @ApiOperation(value = "通过分类ID搜索商品列表", notes = "通过分类ID搜索商品列表", httpMethod = "GET")
+    @GetMapping("/catItems")
+    public IMOOCJSONResult search(
+            @ApiParam(name = "catId", value = "三级分类ID", required = true)
+            @RequestParam Integer catId,
+            @ApiParam(name = "sort", value = "排序", required = false)
+            @RequestParam String sort,
+            @ApiParam(name = "page", value = "查询下一页的第几页", required = false)
+            @RequestParam Integer page,
+            @ApiParam(name = "pageSize", value = "分页的每一页显示的记录数", required = false)
+            @RequestParam Integer pageSize) {
+        // 判空校验
+        if (null == catId) {
+            return IMOOCJSONResult.errorMsg(null);
+        }
+        if(null == page){
+            page = 1;
+        }
+        if(null == pageSize){
+            pageSize = PAGE_SIZE;
+        }
+        PagedGridResult grid = itemService.searchItems(catId,sort,page,pageSize);
+
+        return IMOOCJSONResult.ok(grid);
+    }
+
 
 }
