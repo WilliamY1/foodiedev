@@ -9,6 +9,7 @@ import springfox.documentation.annotations.ApiIgnore;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import java.io.File;
 
 /**
  * 基础控制类
@@ -29,5 +30,11 @@ public class BaseController {
     //                         -> 回调通知的url
     String payReturnUrl = "http://localhost:8088/orders/notifyMerchantOrderPaid";
 
-    String  paymentUrl = "http://payment.t.mukewang.com/foodie-payment/payment/createMerchantOrder";
+    String paymentUrl = "http://payment.t.mukewang.com/foodie-payment/payment/createMerchantOrder";
+
+    //用户上传头像的位置
+    //public static final String IMG_USER_FACE_LOCATION = "C:\\foodie-workspace\\foodie-shop\\face";
+    public static final String IMG_USER_FACE_LOCATION = "C:" + File.separator +
+                                "foodie-workspace" + File.separator +
+                                "foodie-shop" + File.separator + "face";
 }
