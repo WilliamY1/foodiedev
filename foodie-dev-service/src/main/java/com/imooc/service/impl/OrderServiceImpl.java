@@ -7,6 +7,7 @@ import com.imooc.mapper.OrderItemsMapper;
 import com.imooc.mapper.OrderStatusMapper;
 import com.imooc.mapper.OrdersMapper;
 import com.imooc.pojo.*;
+import com.imooc.pojo.bo.ShopcartBO;
 import com.imooc.pojo.bo.SubmitOrderBO;
 import com.imooc.pojo.vo.MerchantOrdersVO;
 import com.imooc.pojo.vo.OrderVO;
@@ -55,7 +56,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Transactional(propagation = Propagation.REQUIRED)
     @Override
-    public OrderVO createOrder(SubmitOrderBO submitOrderBO) {
+    public OrderVO createOrder(List<ShopcartBO> shopcartBOList, SubmitOrderBO submitOrderBO) {
 
         String userId = submitOrderBO.getUserId();
         String addressId = submitOrderBO.getAddressId();
@@ -92,8 +93,11 @@ public class OrderServiceImpl implements OrderService {
         Integer totalAmount = 0;    // 商品原价累计
         Integer realPayAmount = 0;  // 优惠后的实际支付价格累计
         for (String itemSpecId : itemSpecIdArr) {
-            // TODO 整合redis后，商品购买的数量重新从redis的购物车中获取
-            int buyCounts = 1;
+
+            ShopcartBO cartItem = getBuyCountsFromShopcart(shopcartBOList,itemSpecId);
+
+            // 整合redis后，商品购买的数量重新从redis的购物车中获取
+            int buyCounts = cartItem.getBuyCounts();
 
             // 2.1 根据规格ID，查询规格的具体信息，主要获取价格
             ItemsSpec itemSpec = itemService.queryItemSpecById(itemSpecId);
@@ -151,6 +155,23 @@ public class OrderServiceImpl implements OrderService {
 
     }
 
+    /**
+     * 从redis中的购物车里获取商品，目的：处理counts
+     * @param shopcartList
+     * @param specId
+     * @return
+     */
+    private ShopcartBO getBuyCountsFromShopcart(List<ShopcartBO> shopcartList,String specId){
+        for(ShopcartBO cart : shopcartList){
+            if(cart.getSpecId().equals(specId)){
+                return cart;
+            }
+        }
+        return null;
+    }
+
+
+
     @Transactional(propagation = Propagation.REQUIRED)
     @Override
     public void updateOrderStatus(String orderId, Integer orderStatus) {
@@ -196,4 +217,6 @@ public class OrderServiceImpl implements OrderService {
         close.setCloseTime(new Date());
         orderStatusMapper.updateByPrimaryKeySelective(close);
     }
+
+
 }

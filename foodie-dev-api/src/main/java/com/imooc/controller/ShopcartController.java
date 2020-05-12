@@ -93,7 +93,22 @@ public class ShopcartController extends BaseController {
             return IMOOCJSONResult.errorMsg("参数不能为空");
         }
 
-        // TODO 用户在页面删除购物车中的商品数据，如果此时用户已经登录，则需要同步删除后端购物车中的商品
+        // 用户在页面删除购物车中的商品数据，如果此时用户已经登录，则需要同步删除redis购物车中的商品
+        String shopcartJson = redisOperator.get(FOODIE_SHOPCART + ":" + userId);
+        if (StringUtils.isNotBlank(shopcartJson)) {
+            // redis中已经有购物车了
+            List<ShopcartBO> shopcartBOList = JsonUtils.jsonToList(shopcartJson, ShopcartBO.class);
+            // 判断购物车中是否存在已有商品，如果有则删除
+            for (ShopcartBO sc : shopcartBOList) {
+                String tmpSpecId = sc.getSpecId();
+                if (tmpSpecId.equals(itemSpecId)) {
+                    shopcartBOList.remove(sc);
+                    break;
+                }
+            }
+            // 覆盖现有的redis中的购物车
+            redisOperator.set(FOODIE_SHOPCART + ":" + userId, JsonUtils.objectToJson(shopcartBOList));
+        }
 
         return IMOOCJSONResult.ok();
 

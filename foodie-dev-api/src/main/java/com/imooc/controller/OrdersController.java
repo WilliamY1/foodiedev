@@ -5,14 +5,13 @@ import com.imooc.enums.PayMethod;
 import com.imooc.pojo.OrderStatus;
 import com.imooc.pojo.UserAddress;
 import com.imooc.pojo.bo.AddressBO;
+import com.imooc.pojo.bo.ShopcartBO;
 import com.imooc.pojo.bo.SubmitOrderBO;
 import com.imooc.pojo.vo.MerchantOrdersVO;
 import com.imooc.pojo.vo.OrderVO;
 import com.imooc.service.AddressService;
 import com.imooc.service.OrderService;
-import com.imooc.utils.CookieUtils;
-import com.imooc.utils.IMOOCJSONResult;
-import com.imooc.utils.MobileEmailUtils;
+import com.imooc.utils.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -43,6 +42,9 @@ public class OrdersController extends BaseController{
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private RedisOperator redisOperator;
+
     /**
      * 用户在确认订单页面，可以针对收货地址做如下操作：
      * 1. 查询用户的所有收货地址列表
@@ -64,8 +66,16 @@ public class OrdersController extends BaseController{
         }
         //System.out.println(submitOrderBO.toString());
 
+        String shopcartJson = redisOperator.get(FOODIE_SHOPCART + ":" + submitOrderBO.getUserId());
+        if (StringUtils.isNotBlank(shopcartJson)) {
+            return IMOOCJSONResult.errorMsg("购物数据不正确");
+        }
+
+        List<ShopcartBO> shopcartBOList = JsonUtils.jsonToList(shopcartJson, ShopcartBO.class);
+
+
         // 1. 创建订单
-        OrderVO orderVO = orderService.createOrder(submitOrderBO);
+        OrderVO orderVO = orderService.createOrder(shopcartBOList,submitOrderBO);
         String orderId = orderVO.getOrderId();
 
 
