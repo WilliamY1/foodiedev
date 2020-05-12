@@ -8,9 +8,12 @@ import com.imooc.pojo.vo.NewItemsVO;
 import com.imooc.service.CarouseService;
 import com.imooc.service.CategoryService;
 import com.imooc.utils.IMOOCJSONResult;
+import com.imooc.utils.JsonUtils;
+import com.imooc.utils.RedisOperator;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +25,7 @@ import springfox.documentation.annotations.ApiIgnore;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -41,12 +45,33 @@ public class IndexController {
     @Autowired
     private CategoryService categoryService;
 
+    @Autowired
+    private RedisOperator redisOperator;
+
     @ApiOperation(value = "获取首页轮播图列表", notes = "获取首页轮播图列表", httpMethod = "GET")
     @GetMapping("/carousel")
     public IMOOCJSONResult carousel() {
-        List<Carousel> list = carouseService.queryAll(YesOrNo.YES.type);
+
+        // 从redis中读取轮播图数据
+        String carouselStr = redisOperator.get("carousel");
+
+        List<Carousel> list = new ArrayList<>();
+        // 空说明redis缓存无数据
+        if (StringUtils.isBlank(carouselStr)) {
+            list = carouseService.queryAll(YesOrNo.YES.type);
+            redisOperator.set("carousel", JsonUtils.objectToJson(list));
+        } else {
+            list = JsonUtils.jsonToList(carouselStr, Carousel.class);
+        }
+
         return IMOOCJSONResult.ok(list);
     }
+
+    /**
+     * 1. 后台运营系统，一旦广告(轮播图)发生更改，就可以删除缓存，然后重置
+     * 2. 定时重置，比如每天凌晨三点重置
+     * 3. 每个轮播图都有可能是一个广告，每个广告都会有一个过期时间，直到过期了再重置
+     */
 
     /**
      * 首页分类展示需求：
@@ -56,6 +81,7 @@ public class IndexController {
     @ApiOperation(value = "获取商品分类(一级分类)", notes = "获取商品分类(一级分类)", httpMethod = "GET")
     @GetMapping("/cats")
     public IMOOCJSONResult cats() {
+        //TODO:将商品分类存入redis
         List<Category> list = categoryService.queryAllRootLevelCat();
         return IMOOCJSONResult.ok(list);
     }
@@ -63,10 +89,12 @@ public class IndexController {
     @ApiOperation(value = "获取商品子分类", notes = "获取商品子分类", httpMethod = "GET")
     @GetMapping("/subCat/{rootCatId}")
     public IMOOCJSONResult subCat(
-            @ApiParam(name = "rootCatId", value = "一级分类id",required = true)
+            @ApiParam(name = "rootCatId", value = "一级分类id", required = true)
             @PathVariable Integer rootCatId) {
+        //TODO:将商品子分类存入redis
+
         // 判空校验
-        if(null == rootCatId){
+        if (null == rootCatId) {
             return IMOOCJSONResult.errorMsg("分类不存在");
         }
 
@@ -77,17 +105,16 @@ public class IndexController {
     @ApiOperation(value = "查询每个一级分类下的最新六条商品数据", notes = "查询每个一级分类下的最新六条商品数据", httpMethod = "GET")
     @GetMapping("/sixNewItems/{rootCatId}")
     public IMOOCJSONResult sixNewItems(
-            @ApiParam(name = "rootCatId", value = "一级分类id",required = true)
+            @ApiParam(name = "rootCatId", value = "一级分类id", required = true)
             @PathVariable Integer rootCatId) {
         // 判空校验
-        if(null == rootCatId){
+        if (null == rootCatId) {
             return IMOOCJSONResult.errorMsg("分类不存在");
         }
 
         List<NewItemsVO> list = categoryService.getSixNewItemsLazy(rootCatId);
         return IMOOCJSONResult.ok(list);
     }
-
 
 
 }
