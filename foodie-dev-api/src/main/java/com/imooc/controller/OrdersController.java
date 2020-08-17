@@ -3,18 +3,17 @@ package com.imooc.controller;
 import com.imooc.enums.OrderStatusEnum;
 import com.imooc.enums.PayMethod;
 import com.imooc.pojo.OrderStatus;
-import com.imooc.pojo.UserAddress;
-import com.imooc.pojo.bo.AddressBO;
 import com.imooc.pojo.bo.ShopcartBO;
 import com.imooc.pojo.bo.SubmitOrderBO;
 import com.imooc.pojo.vo.MerchantOrdersVO;
 import com.imooc.pojo.vo.OrderVO;
-import com.imooc.service.AddressService;
 import com.imooc.service.OrderService;
-import com.imooc.utils.*;
+import com.imooc.utils.CookieUtils;
+import com.imooc.utils.IMOOCJSONResult;
+import com.imooc.utils.JsonUtils;
+import com.imooc.utils.RedisOperator;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -34,7 +33,7 @@ import java.util.List;
 @Api(value = "订单相关", tags = {"订单相关的api接口"})
 @RequestMapping("orders")
 @RestController
-public class OrdersController extends BaseController{
+public class OrdersController extends BaseController {
 
     @Autowired
     private OrderService orderService;
@@ -60,8 +59,8 @@ public class OrdersController extends BaseController{
                                   HttpServletRequest request,
                                   HttpServletResponse response) {
 
-        if(!submitOrderBO.getPayMethod().equals(PayMethod.WEIXIN.type) &&
-                !submitOrderBO.getPayMethod().equals(PayMethod.ALIPAY.type)){
+        if (!submitOrderBO.getPayMethod().equals(PayMethod.WEIXIN.type) &&
+                !submitOrderBO.getPayMethod().equals(PayMethod.ALIPAY.type)) {
             return IMOOCJSONResult.errorMsg("支付方式不支持！");
         }
         //System.out.println(submitOrderBO.toString());
@@ -73,9 +72,8 @@ public class OrdersController extends BaseController{
 
         List<ShopcartBO> shopcartBOList = JsonUtils.jsonToList(shopcartJson, ShopcartBO.class);
 
-
         // 1. 创建订单
-        OrderVO orderVO = orderService.createOrder(shopcartBOList,submitOrderBO);
+        OrderVO orderVO = orderService.createOrder(shopcartBOList, submitOrderBO);
         String orderId = orderVO.getOrderId();
 
 
@@ -86,8 +84,13 @@ public class OrdersController extends BaseController{
          * 3003 -> 用户购买
          * 4004
          */
-        // TODO 整合Redis之后，完善购物车中的已结算商品清除，并且同步到前端的cookie
-        //CookieUtils.setCookie(request,response,FOODIE_SHOPCART,"",true);
+
+        // 清理覆盖现有的redis汇总的购物数据
+        shopcartBOList.removeAll(orderVO.getToBeRemovedShopcartList());
+        redisOperator.set(FOODIE_SHOPCART + ":" + submitOrderBO.getUserId(), JsonUtils.objectToJson(shopcartBOList));
+        // 整合Redis之后，完善购物车中的已结算商品清除，并且同步到前端的cookie
+
+        CookieUtils.setCookie(request, response, FOODIE_SHOPCART, JsonUtils.objectToJson(shopcartBOList), true);
 
         // 3. 向支付中心发送当前订单，用于保存支付中心的订单数据
         MerchantOrdersVO merchantOrdersVO = orderVO.getMerchantOrdersVO();
@@ -98,16 +101,16 @@ public class OrdersController extends BaseController{
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.add("imoocUserId","2000018-976176537");
+        headers.add("imoocUserId", "2000018-976176537");
         headers.add("password", "aod1-fp21-ghp5-h03d");
 
-        HttpEntity<MerchantOrdersVO> entity = new HttpEntity<>(merchantOrdersVO,headers);
+        HttpEntity<MerchantOrdersVO> entity = new HttpEntity<>(merchantOrdersVO, headers);
 
         ResponseEntity<IMOOCJSONResult> responseEntity =
-                restTemplate.postForEntity(paymentUrl,entity,IMOOCJSONResult.class);
+                restTemplate.postForEntity(paymentUrl, entity, IMOOCJSONResult.class);
 
         IMOOCJSONResult paymentResult = responseEntity.getBody();
-        if(paymentResult.getStatus() != 200){
+        if (paymentResult.getStatus() != 200) {
             return IMOOCJSONResult.errorMsg("支付中心订单创建失败，请联系管理员！");
         }
 
@@ -115,7 +118,7 @@ public class OrdersController extends BaseController{
     }
 
     @PostMapping("/notifyMerchantOrderPaid")
-    public Integer notifyMerchantOrderPaid(@RequestParam String merchantOrderId){
+    public Integer notifyMerchantOrderPaid(@RequestParam String merchantOrderId) {
         orderService.updateOrderStatus(merchantOrderId, OrderStatusEnum.WAIT_DELIVER.type);
 
         return HttpStatus.OK.value();
@@ -123,7 +126,7 @@ public class OrdersController extends BaseController{
     }
 
     @PostMapping("/getPaidOrderInfo")
-    public IMOOCJSONResult getPaidOrderInfo(@RequestParam String orderId){
+    public IMOOCJSONResult getPaidOrderInfo(@RequestParam String orderId) {
         OrderStatus orderStatus = orderService.queryOrderStatusInfo(orderId);
 
         return IMOOCJSONResult.ok(orderStatus);

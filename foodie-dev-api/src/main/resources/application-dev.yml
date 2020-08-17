@@ -7,10 +7,24 @@ spring:
     password: w3i9l6l4i2a3m
 
   redis:
+    # Redis 哨兵模式
+#    database: 1
+#    password: w3i9l6l4i2a3m
+#    sentinel:
+#      master: imooc-master
+#      nodes: 192.168.1.191:26379,192.168.1.192:26379,192.168.1.193:26379
+
+    #Redis 集群模式
+#    password:w3i9l6l4i2a3m
+#    cluster:
+#      nodes: 192.168.1.201:6379,192.168.1.202:6379,192.168.1.203:6379
+    # Redis 单机单实例
     database: 1
     host: 129.211.139.87
     port: 6379
     password: w3i9l6l4i2a3m
+
+
 mybatis:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl   # mybatis的日志SQL打印-控制台

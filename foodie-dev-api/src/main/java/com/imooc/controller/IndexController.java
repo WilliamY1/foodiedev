@@ -14,17 +14,13 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import springfox.documentation.annotations.ApiIgnore;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -91,14 +87,39 @@ public class IndexController {
     public IMOOCJSONResult subCat(
             @ApiParam(name = "rootCatId", value = "一级分类id", required = true)
             @PathVariable Integer rootCatId) {
-        //TODO:将商品子分类存入redis
+
 
         // 判空校验
         if (null == rootCatId) {
             return IMOOCJSONResult.errorMsg("分类不存在");
         }
+        // 将商品子分类存入redis
+        List<CategoryVO> list = new ArrayList<>();
+        String catsStr = redisOperator.get("subCat:" + rootCatId);
+        if (StringUtils.isBlank(catsStr)) {
+            list = categoryService.getSubCatList(rootCatId);
+            // 因为没缓存中没有数据，所有的查询都直接打在数据库上，缓存没起到作用(缓存穿透)
+            /**
+             * 查询的key在redis中不存在，
+             * 对应的id在数据库中也不存在，
+             * 此时被非法用户进行攻击，大量的请求会直接打在数据库上，
+             * 造成宕机，从而影响整个系统，
+             * 这种现象称之为缓存穿透
+             * 解决方案：把空的数据也缓存起来，比如空字符串，空对象，空数组或list
+             */
+            if(!CollectionUtils.isEmpty(list)){
+                redisOperator.set("subCat:" + rootCatId, JsonUtils.objectToJson(list));
+            }else{
+                redisOperator.set("subCat:" + rootCatId, JsonUtils.objectToJson(list), 5 * 60);
+            }
+            // 不管List是不是为空，都放在缓存中
+//            redisOperator.set("subCat:" + rootCatId, JsonUtils.objectToJson(list), 5 * 60);
 
-        List<CategoryVO> list = categoryService.getSubCatList(rootCatId);
+        } else {
+            list = JsonUtils.jsonToList(catsStr, CategoryVO.class);
+        }
+
+//        List<CategoryVO> list = categoryService.getSubCatList(rootCatId);
         return IMOOCJSONResult.ok(list);
     }
 
